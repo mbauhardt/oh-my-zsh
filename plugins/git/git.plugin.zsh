@@ -5,6 +5,7 @@ alias gst='git status'
 compdef _git gst=git-status
 alias gl='git pull'
 compdef _git gl=git-pull
+alias glr='git pull --rebase'
 alias gup='git fetch && git rebase'
 compdef _git gup=git-fetch
 alias gp='git push'
