@@ -1,0 +1,3 @@
+function copydir {
+    pwd | pbcopy
+}
