@@ -1,3 +1,3 @@
 function copydir {
-    pwd | pbcopy
+   pwd | tr -d "\r\n" | pbcopy
 }
