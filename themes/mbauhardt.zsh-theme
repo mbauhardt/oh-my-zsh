@@ -60,7 +60,7 @@ prompt_command_status() {
    local symbols  
    [[ $LAST_CMD_STATUS -ne 0 ]] && symbols+="%{%F{red}%}$ballot_x"
    [[ $LAST_CMD_STATUS -eq 0 ]] && symbols+="%{%F{green}%}$check_mark"
-   prompt_segment black default "$symbols"
+   prompt_segment black default "$symbols $LAST_CMD_STATUS %h"
 }
 
 reset_colors() {
@@ -89,25 +89,6 @@ prompt_end() {
 
 prompt_git() {
 
-  _git_prompt_info() {
-    ref=$(git symbolic-ref HEAD 2> /dev/null) || ref="$(git show-ref --head -s --abbrev | head -n1 2> /dev/null)"
-    echo "$ZSH_THEME_GIT_PROMPT_PREFIX${ref#refs/heads/}$(parse_git_dirty)$ZSH_THEME_GIT_PROMPT_SUFFIX"
-  }
-
-  git_prompt_ahead_behind() {
-    ahead=$(git rev-list origin/$(current_branch)..HEAD -- 2> /dev/null)
-    behind=$(git rev-list HEAD..origin/$(current_branch) -- 2> /dev/null)
-    if [[ -n $ahead && -n $behind ]]; then
-      echo "$ZSH_THEME_GIT_PROMPT_DIVERGED"
-    elif [[ -n $ahead ]]; then
-      echo "$ZSH_THEME_GIT_PROMPT_AHEAD"
-    elif [[ -n $behind ]]; then
-      echo "$ZSH_THEME_GIT_PROMPT_BEHIND"
-    else
-      echo "$ZSH_THEME_GIT_PROMPT_UPTODATE"
-    fi
-  }
-
   if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
    ZSH_THEME_GIT_PROMPT_MODIFIED=" %{$(echo -e "\xe2\x9a\x99")%}"
    ZSH_THEME_GIT_PROMPT_DELETED=" %{$(echo -e "\xe2\x9c\x98")%}"
@@ -123,32 +104,101 @@ prompt_git() {
    ZSH_THEME_GIT_PROMPT_BEHIND=" %{$(echo -e "\xe2\x86\x93")%}"
    ZSH_THEME_GIT_PROMPT_DIVERGED=" %{$(echo -e "\xe2\x86\x95")%}"
    if [[ -n $(parse_git_dirty) ]]; then
-     prompt_segment yellow black "$(_git_prompt_info)$(git_prompt_status)$(git_prompt_ahead_behind)"
+     prompt_segment yellow black "$(git_prompt_info)$(git_prompt_status)"
    else
-     prompt_segment green black "$(_git_prompt_info)$(git_prompt_status)$(git_prompt_ahead_behind)"
+     prompt_segment green black "$(git_prompt_info)$(git_prompt_status)"
    fi
   fi
 }
 
+space() {
+  echo -n ' '
+}
+
+comma() {
+  echo -n ', '
+}
+
+command_exists () {
+   type "$1" &> /dev/null ;
+}
+
+prompt_system() {
+  echo -n 'zsh-'$ZSH_VERSION
+  if command_exists brew; then
+    comma
+    echo -n 'brew-'`brew --version`
+  fi
+
+  if command_exists mysql; then
+    comma
+    echo -n 'mysql-'`mysql --version | awk '{print $5}'`
+  fi
+
+  if command_exists git; then
+    space
+    echo -n 'git-'`git --version | awk '{print $3}'`
+  fi
+
+  if command_exists rvm; then  
+    comma
+    echo -n 'rvm-'`rvm --version 2>&1 | grep rvm | awk '{print $2}'`
+  fi
+}
+
+prompt_lang() {
+  if command_exists ruby; then
+    echo -n 'ruby-'`ruby --version | awk '{print $2}'`
+  fi
+
+  if command_exists python; then
+    comma
+    echo -n 'python-'`python --version 2>&1 | awk '{print $2}'`
+  fi
+
+  if command_exists java; then
+    comma
+    echo -n 'java-'`java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'`
+  fi
+}
+
+build_info_line() {
+  new_line
+  new_line
+  echo -n '['
+  prompt_system
+  echo -n ']'
+  echo -n ' '
+  echo -n '['
+  prompt_lang
+  echo -n ']'
+}
 
 build_powerline() {
-   LAST_CMD_STATUS=$?
-
-   new_line
    new_line
    enable_bold
    prompt_command_status
    prompt_user
    prompt_dir
    prompt_git
-
    prompt_end
-
    reset_colors
 
    new_line
-   echo -n '> '
+   echo -n '%# '
+}
+
+build_date_time() {
+   echo -n "%{$fg[red]%} %w,%t"
+   reset_colors
+}
+
+build_all_prompts() {
+   LAST_CMD_STATUS=$?
+   build_info_line
+   build_powerline
 }
 
 
-PROMPT='$(build_powerline)'
+PROMPT='$(build_all_prompts)'
+RPROMPT='$(build_date_time)'
